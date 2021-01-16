@@ -1,0 +1,10 @@
+requests
+numpy
+pandas
+sqlalchemy
+random
+re
+time
+tqdm
+datetime
+click
