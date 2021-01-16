@@ -22,7 +22,7 @@ python fund_list_down.py --account root --password 123456 --host localhost --pos
 ```
 --account mysql账号名称  --password mysql密码  --host mysql地址  --post mysql端口  --database mysql数据库名称
 
-基金类型与数字代号对应关系见fund_type.xlsx
+基金类型与数字代号对应关系见fund-type.xlsx
 
 ### 生成fund_data_all数据表
 初次运行必须是update==False，下载全部基金数据
