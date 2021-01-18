@@ -39,6 +39,7 @@ def build_worth_data(fund_text, fund, date_last):
     ACWorth_temp_index = re.search(pattern, fund_text).span()
 
     ACWorth_temp = fund_text[ACWorth_temp_index[0]:ACWorth_temp_index[1]]
+    ACWorth_temp = ACWorth_temp.replace("null", "0")
     ACWorth_list = eval(ACWorth_temp)
     ACWorth_list_change = list()
 
@@ -47,11 +48,19 @@ def build_worth_data(fund_text, fund, date_last):
             ACWorth_list_change.append([i[1]])
         else:
             if i[0] > date_end:
-                ACWorth_list_change.append([i[1]])
-    ACWorth_df = pd.DataFrame(ACWorth_list_change, columns=['ACWorth'])
+                ACWorth_list_change.append([i[0],i[1]])
+    ACWorth_df = pd.DataFrame(ACWorth_list_change, columns=['date','ACWorth'])
+    ACWorth_df['date']= ACWorth_df['date'].apply(lambda x:pd.Timestamp(int(x),unit='ms',tz='Asia/Shanghai').strftime("%Y-%m-%d"))
     ACWorth_df['ACWorth']= ACWorth_df['ACWorth'].astype('float')
     
-    unit_df = unit_df.join(ACWorth_df)
+    unit_df = pd.merge(unit_df, ACWorth_df)
+    
+    error_t = unit_df[unit_df['ACWorth']==0].index
+    
+    for i in range(len(error_t)):
+        unit_df.loc[error_t[i],'ACWorth'] = unit_df.loc[error_t[i],'netWorth']
+        unit_df.loc[error_t[i],'growth'] = (unit_df.loc[error_t[i],'ACWorth']-unit_df.loc[error_t[i-1],'ACWorth'])/unit_df.loc[error_t[i-1],'netWorth']
+        
     unit_df = unit_df.loc[:, ['fund','date','netWorth','ACWorth','growth']]
 
     return unit_df
