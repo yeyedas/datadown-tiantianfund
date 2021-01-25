@@ -31,7 +31,9 @@ def main_command(account, password, host, post, database, update, save_error):
     
     # fund_list = pd.read_sql_table('fund_list', engine)
     else:
-        fund_list = pd.read_sql('SELECT DISTINCT fund FROM fund_list WHERE type=\'1\'', engine).sort_values(by='fund')
+        # 可以通过修改sql语句来控制下载哪些类型的基金
+        # fund_list = pd.read_sql('SELECT DISTINCT fund FROM fund_list WHERE type=\'1\'', engine).sort_values(by='fund')
+        fund_list = pd.read_sql('SELECT DISTINCT fund FROM fund_list', engine).sort_values(by='fund')
         date_last = None
     
     
