@@ -15,23 +15,11 @@ def fund_list_down(engine):
     fund_text = requests.get('http://fund.eastmoney.com/js/fundcode_search.js').text
     fund_text = fund_text.replace('var r = ','')
     fund_text = fund_text.replace(';','')
-    fund_text = fund_text.replace('混合型','1')
-    fund_text = fund_text.replace('债券型','2')
-    fund_text = fund_text.replace('股票型','3')
-    fund_text = fund_text.replace('QDII-指数','4')
-    fund_text = fund_text.replace('货币型','5')
-    fund_text = fund_text.replace('定开债券','6')
     fund_text = fund_text.replace('联接基金','7')
     fund_text = fund_text.replace('股票指数','8')
-    fund_text = fund_text.replace('QDII','9')
-    fund_text = fund_text.replace('理财型','10')
-    fund_text = fund_text.replace('债券指数','11')
-    fund_text = fund_text.replace('保本型','12')
-    fund_text = fund_text.replace('其他创新','13')
-    fund_text = fund_text.replace('混合-FOF','14')
-    fund_text = fund_text.replace('股票-FOF','15')
-    fund_text = fund_text.replace('固定收益','16')
     fund_text = fund_text.replace('分级杠杆','17')
+
+
     fund_text = fund_text.replace('ETF-场内','18')
     fund_text = fund_text.replace('QDII-ETF','19')
     
