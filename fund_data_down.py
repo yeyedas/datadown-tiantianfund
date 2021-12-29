@@ -106,7 +106,7 @@ def get_fund_data(fund_list, date_last, engine, name):
 
 @click.command()
 @click.option('--account', default='root', help='Account of mysql')
-@click.option('--password', default='Aa123321123', help='Password of mysql')
+@click.option('--password', default='123456', help='Password of mysql')
 @click.option('--host', default='localhost', help='Host of mysql')
 @click.option('--post', default='3306', help='Post of mysql')
 @click.option('--database', default='fund_data', help='database of mysql')
