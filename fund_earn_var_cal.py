@@ -58,9 +58,17 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
             else:
                 df.to_sql(name='%s_earn_var' % (name), con=engine, index=False, if_exists='append')
 
+@click.command()
+@click.option('--account', default='root', help='Account of mysql')
+@click.option('--password', default='123456', help='Password of mysql')
+@click.option('--host', default='localhost', help='Host of mysql')
+@click.option('--post', default='3306', help='Post of mysql')
+@click.option('--database', default='fund_data', help='database of mysql')
+@click.option('--update', default=False, help='Update data or create data')
 
-def main_command(engine, update):
+def main_command(account, password, host, post, database, update):
 
+    engine = create_engine('mysql+pymysql://%s:%s@%s:%s/%s' % (account, password, host, post, database))
     name = 'hybrid'
 
     date_latest = pd.read_sql('SELECT MAX(date) FROM %s_fund_data' % (name), engine).loc[0, 'MAX(date)']
@@ -84,12 +92,4 @@ def main_command(engine, update):
 
 
 if __name__ == '__main__':
-    account = 'root'
-    password = 'Aa123321123'
-    host = 'localhost'
-    post = '3306'
-    database = 'fund'
-    update = False
-    engine = create_engine('mysql+pymysql://%s:%s@%s:%s/%s' % (account, password, host, post, database))
-    # date_latest = pd.read_sql('SELECT MAX(date) FROM equity_fund_data WHERE fund=\'000082\'', engine).astype('datetime64').iloc[0,0] # 基础数据最后日期
-    main_command(engine, update)
+    main_command()
