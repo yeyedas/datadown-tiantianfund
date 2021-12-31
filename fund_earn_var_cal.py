@@ -54,9 +54,9 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
         var_df.loc[:, 'third_increase'] = var_df.loc[:, 'second_increase'].shift(90)
         var_df.loc[:, 'fourth_increase'] = var_df.loc[:, 'third_increase'].shift(90)
 
-        earn_df = earn_df.merge(date_list, how='right').dropna()
+        earn_df = earn_df.merge(date_list, how='right').dropna(subset=['7days_earn'])
         earn_df = earn_df[earn_df.date > date_end]
-        var_df = var_df.merge(date_list, how='right').dropna()
+        var_df = var_df.merge(date_list, how='right').dropna(subset=['7days_var'])
         var_df = var_df[var_df.date > date_end]
 
         earn_df = earn_df[
