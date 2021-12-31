@@ -21,48 +21,42 @@ def build_worth_data(fund_text, fund, date_last):
     unit_temp_index = re.search(pattern, fund_text).span()
     unit_temp = fund_text[unit_temp_index[0]:unit_temp_index[1]]
     unit_dict = eval(unit_temp)
-    unit_list_change = list()
-    for i in unit_dict:
-        if i["x"] > date_last:
-            unit_list_change.append([i["x"], i["y"]])
-    unit_df = pd.DataFrame(unit_list_change, columns=['date', 'netWorth'])
-    unit_df['date'] = unit_df['date'].apply(
-        lambda x: pd.Timestamp(int(x), unit='ms', tz='Asia/Shanghai').strftime("%Y-%m-%d"))
+    unit_df = pd.DataFrame(unit_dict)
+    unit_df = unit_df[['x', 'y']].rename(columns={'x': 'date', 'y': 'netWorth'})
+    unit_df.date = (unit_df.date * 1000000).astype('datetime64[ns, Asia/Shanghai]')
+    unit_df.date = unit_df.date.dt.date.astype('str')
     unit_df['netWorth'] = unit_df['netWorth'].astype('float')
-
     unit_df['fund'] = fund
 
     pattern = '(?<=Data_ACWorthTrend = \[).*(?=\]\;\/\*累计收益率走势)'
     ACWorth_temp_index = re.search(pattern, fund_text).span()
-
     ACWorth_temp = fund_text[ACWorth_temp_index[0]:ACWorth_temp_index[1]]
-    ACWorth_temp = ACWorth_temp.replace('null', 'None')
+    ACWorth_temp = ACWorth_temp.replace('null','None')
     ACWorth_list = eval(ACWorth_temp)
-    ACWorth_list_change = list()
-
-    for i in ACWorth_list:
-        if i[0] > date_last:
-            ACWorth_list_change.append([i[1]])
-    ACWorth_df = pd.DataFrame(ACWorth_list_change, columns=['ACWorth'])
+    ACWorth_df = pd.DataFrame(ACWorth_list, columns=['a', 'ACWorth'])
+    ACWorth_df = ACWorth_df[['ACWorth']]
 
     unit_df = unit_df.join(ACWorth_df)
-    unit_df = unit_df.loc[:, ['fund', 'date', 'netWorth', 'ACWorth']]
+    unit_df = unit_df.loc[:, ['fund','date','netWorth','ACWorth']]
+    unit_df = unit_df[unit_df.date >= date_last]
     if unit_df.ACWorth.isnull().any():
         index_list = unit_df[unit_df.ACWorth.isnull()].index
         for index_t in index_list:
-            if index_t == 0:
-                unit_df.loc[index_t, 'ACWorth'] = unit_df.loc[index_t, 'netWorth']
+            if index_t==0:
+                unit_df.loc[index_t,'ACWorth'] = unit_df.loc[index_t,'netWorth']
             else:
                 unit_df.loc[index_t, 'ACWorth'] = unit_df.loc[index_t - 1, 'ACWorth'] + (
                             unit_df.loc[index_t, 'netWorth'] - unit_df.loc[index_t - 1, 'netWorth'])
-    unit_df['ACWorth'] = unit_df['ACWorth'].astype('float')
-    unit_df['growth'] = (unit_df['ACWorth'] - unit_df['ACWorth'].shift(1)) / unit_df['netWorth'].shift(1)
-    unit_df.loc[0, 'growth'] = 0
+    unit_df['ACWorth']= unit_df['ACWorth'].astype('float')
+
+    unit_df['growth'] = (unit_df['ACWorth'] - unit_df['ACWorth'].shift(1))/unit_df['netWorth'].shift(1)
+    unit_df = unit_df[unit_df.date > date_last].reset_index(drop=True)
+    if unit_df.loc[0,:].isnull().any():
+        unit_df.loc[0,'growth'] = 0
     unit_df['growth'] = unit_df['growth'].astype('float')
     return unit_df
 
-
-def get_fund_data(fund_list, date_last, engine, name):
+def get_fund_data(fund_list, engine, name, update):
     user_agent_list = [
         'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.71 Safari/537.1 LBBROWSER',
         'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E)',
@@ -82,6 +76,10 @@ def get_fund_data(fund_list, date_last, engine, name):
 
     list_error = list()
     for fund in tqdm.tqdm(fund_list.fund):
+        if update:
+            date_last = pd.read_sql('SELECT MAX(date) FROM %s_fund_data WHERE fund=\'%s\''%(name,fund), engine).iloc[-1, 0]
+        else:
+            date_last = '2015-01-01'
         header = {'User-Agent': random.choice(user_agent_list),
                   'Referer': random.choice(referer_list)
                   }
@@ -95,14 +93,22 @@ def get_fund_data(fund_list, date_last, engine, name):
                           'Referer': random.choice(referer_list)
                           }
                 time.sleep(random.randint(15, 20) / 10)
-        try:
-            worth_df = build_worth_data(fund_text, fund, date_last)
-            if worth_df.empty == False:
-                worth_df.to_sql(name='%s_fund_data' % (name), con=engine, index=False, if_exists='append')
-        except Exception:
-            list_error.append(fund)
-            print('\n该基金下载错误：' + fund)
+        pattern = '(?<=测试数据 \* \@type \{arry\} \*//\*).*(?=\*/var ishb\=false)'
+        fund_date_new_idx = re.search(pattern, fund_text).span()
+        fund_date_new = pd.to_datetime(fund_text[fund_date_new_idx[0]:fund_date_new_idx[1]]).date()
+        if (date_last < (fund_date_new - pd.Timedelta(days=1)).strftime("%Y-%m-%d")):
+            try:
+                worth_df = build_worth_data(fund_text, fund, date_last)
+                if worth_df.empty == False:
+                    if ((update == False) & (fund == fund_list.fund.iloc[0])):
+                        worth_df.to_sql(name='%s_fund_data' % (name), con=engine, index=False, if_exists='replace')
+                    else:
+                        worth_df.to_sql(name='%s_fund_data' % (name), con=engine, index=False, if_exists='append')
+            except Exception:
+                list_error.append(fund)
+                print('\n该基金下载错误：' + fund)
     return list_error
+
 
 @click.command()
 @click.option('--account', default='root', help='Account of mysql')
