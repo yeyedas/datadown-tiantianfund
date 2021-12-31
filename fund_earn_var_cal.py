@@ -104,9 +104,12 @@ def main_command(account, password, host, post, database, update):
 
         if update == False:
             with engine.connect() as con:
-                con.execute('create index s1 on %s_earn_var(fund(6))' % (name))  # 创建索引
-                con.execute('create index s2 on %s_earn_var(date(12))' % (name))  # 创建索引
-                con.execute('create index s3 on %s_earn_var(fund(6),date(12))' % (name))  # 创建索引
+                con.execute('create index s1 on %s_earn(fund(6))' % (name))  # 创建索引
+                con.execute('create index s2 on %s_earn(date(12))' % (name))  # 创建索引
+                con.execute('create index s3 on %s_earn(fund(6),date(12))' % (name))  # 创建索引
+                con.execute('create index s1 on %s_var(fund(6))' % (name))  # 创建索引
+                con.execute('create index s2 on %s_var(date(12))' % (name))  # 创建索引
+                con.execute('create index s3 on %s_var(fund(6),date(12))' % (name))  # 创建索引
                 con.close()
 
 
