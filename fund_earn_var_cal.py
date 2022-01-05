@@ -19,7 +19,7 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
 
     for fund in tqdm.tqdm(fund_list.fund):
 
-        fund_data = pd.read_sql('SELECT fund,date,ACWorth FROM %s_fund_data WHERE fund=\'%s\'' % (name, fund),
+        fund_data = pd.read_sql('SELECT fund,date,ACWorth,growth FROM %s_fund_data WHERE fund=\'%s\'' % (name, fund),
                                 engine).sort_values(by='date')
         fund_data = fund_data.drop_duplicates()
         fund_data = fund_data[
@@ -32,6 +32,7 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
 
         fund_data = fund_data.merge(date_list_full, how="outer", on="date").sort_values(by='date').reset_index(
             drop=True)
+        fund_data.growth = fund_data.growth.fillna(0)
         fund_data = fund_data.fillna(method='ffill')
 
         earn_df = pd.DataFrame()
@@ -40,11 +41,15 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
         var_df = pd.DataFrame()
         var_df.loc[:, 'date'] = fund_data.date
         var_df.loc[:, 'fund'] = fund
+        positive_rate_df = pd.DataFrame()
+        positive_rate_df.loc[:, 'date'] = fund_data.date
+        positive_rate_df.loc[:, 'fund'] = fund_data.fund
+        positive_rate_df.loc[:, 'positive'] = fund_data.growth>=0
         for day in cal_day:
-            days_grand_total = (fund_data.ACWorth - fund_data.ACWorth.shift(day)) / fund_data.ACWorth.shift(day)
+            days_grand_total = (fund_data.ACWorth - fund_data.ACWorth.shift(day-1)) / fund_data.ACWorth.shift(day-1)
             earn_df.loc[:, '%ddays_earn' % (day)] = days_grand_total
-        for day in cal_day:
-            var_df.loc[:, '%ddays_var' % (day)] = fund_data.ACWorth.rolling(day + 1).var()
+            var_df.loc[:, '%ddays_var' % (day)] = fund_data.ACWorth.rolling(day).var()
+            positive_rate_df.loc[:, '%ddays_rate' % (day)] = positive_rate_df.loc[:, 'positive'].rolling(day).sum() / day
 
         earn_df.loc[:, 'second_increase'] = earn_df.loc[:, '90days_earn'].shift(90)
         earn_df.loc[:, 'third_increase'] = earn_df.loc[:, 'second_increase'].shift(90)
@@ -58,6 +63,9 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
         earn_df = earn_df[earn_df.date > date_end]
         var_df = var_df.merge(date_list, how='right').dropna(subset=['7days_var'])
         var_df = var_df[var_df.date > date_end]
+        positive_rate_df = positive_rate_df.drop(columns='positive')
+        positive_rate_df = positive_rate_df.merge(date_list, how='right').dropna(subset=['7days_rate'])
+        positive_rate_df = positive_rate_df[positive_rate_df.date > date_end]
 
         earn_df = earn_df[
             ['fund', 'date', '7days_earn', '30days_earn', '90days_earn', '180days_earn', '270days_earn', '365days_earn',
@@ -75,6 +83,11 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
                 var_df.to_sql(name='%s_var' % (name), con=engine, index=False, if_exists='replace')
             else:
                 var_df.to_sql(name='%s_var' % (name), con=engine, index=False, if_exists='append')
+        if positive_rate_df.empty == False:
+            if (update == False) & (fund == fund_list.loc[0].values):
+                positive_rate_df.to_sql(name='%s_positive_rate' % (name), con=engine, index=False, if_exists='replace')
+            else:
+                positive_rate_df.to_sql(name='%s_positive_rate' % (name), con=engine, index=False, if_exists='append')
 
 @click.command()
 @click.option('--account', default='root', help='Account of mysql')
@@ -110,6 +123,9 @@ def main_command(account, password, host, post, database, update):
                 con.execute('create index s1 on %s_var(fund(6))' % (name))  # 创建索引
                 con.execute('create index s2 on %s_var(date(12))' % (name))  # 创建索引
                 con.execute('create index s3 on %s_var(fund(6),date(12))' % (name))  # 创建索引
+                con.execute('create index s1 on %s_positive_rate(fund(6))' % (name))  # 创建索引
+                con.execute('create index s2 on %s_positive_rate(date(12))' % (name))  # 创建索引
+                con.execute('create index s3 on %s_positive_rate(fund(6),date(12))' % (name))  # 创建索引
                 con.close()
 
 
