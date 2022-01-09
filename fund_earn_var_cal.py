@@ -48,7 +48,7 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
         for day in cal_day:
             days_grand_total = (fund_data.ACWorth - fund_data.ACWorth.shift(day-1)) / fund_data.ACWorth.shift(day-1)
             earn_df.loc[:, '%ddays_earn' % (day)] = days_grand_total
-            var_df.loc[:, '%ddays_var' % (day)] = fund_data.ACWorth.rolling(day).var()
+            var_df.loc[:, '%ddays_var' % (day)] = fund_data.growth.rolling(day).var() * 100
             positive_rate_df.loc[:, '%ddays_rate' % (day)] = positive_rate_df.loc[:, 'positive'].rolling(day).sum() / day
 
         earn_df.loc[:, 'second_increase'] = earn_df.loc[:, '90days_earn'].shift(90)
