@@ -95,10 +95,14 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
 @click.option('--host', default='localhost', help='Host of mysql')
 @click.option('--post', default='3306', help='Post of mysql')
 @click.option('--database', default='fund_data', help='database of mysql')
-@click.option('--update', default=False, help='Update data or create data')
+@click.option('--update', default='False', help='Update data or create data')
 
 def main_command(account, password, host, post, database, update):
 
+    if (update == 'True'):
+        update = True
+    if (update == 'False'):
+        update = False
     engine = create_engine('mysql+pymysql://%s:%s@%s:%s/%s' % (account, password, host, post, database))
     names = ['hybrid', 'bond', 'equity', 'index', 'qdii', 'commodity']
 
