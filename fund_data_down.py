@@ -15,8 +15,8 @@ import tqdm
 from datetime import datetime
 import click
 
-
 def build_worth_data(fund_text, fund, date_last):
+
     pattern = '(?<=Data_netWorthTrend = \[).*(?=\];\/\*累计净值走势\*\/var)'
     unit_temp_index = re.search(pattern, fund_text).span()
     unit_temp = fund_text[unit_temp_index[0]:unit_temp_index[1]]
@@ -116,19 +116,17 @@ def get_fund_data(fund_list, engine, name, update):
 @click.option('--host', default='localhost', help='Host of mysql')
 @click.option('--post', default='3306', help='Post of mysql')
 @click.option('--database', default='fund_data', help='database of mysql')
-@click.option('--update', default=False, help='Update data or create data')
+@click.option('--update', default='False', help='Update data or create data')
 
 def main_command(account, password, host, post, database, update):
     # 获取所有基金数据
+    if (update == 'True'):
+        update = True
+    if (update == 'False'):
+        update = False
     engine = create_engine('mysql+pymysql://%s:%s@%s:%s/%s' % (account, password, host, post, database))
     names = ['hybrid', 'bond', 'equity', 'index', 'qdii', 'commodity']  # [混合，债券，股票，指数，QDII，商品（非QDII）]
     type_list = [1, 5, 9, 10, 11, 12, 13]
-
-    if update:
-        date_last = pd.read_sql('SELECT MAX(date) FROM hybrid_fund_data WHERE fund=\'000001\'', engine).iloc[-1, 0]
-        date_last = int(datetime.strptime(date_last, "%Y-%m-%d").timestamp() * 1000)
-    else:
-        date_last = int(datetime.strptime('2015-01-01', "%Y-%m-%d").timestamp() * 1000)
 
     for i in range(6):
 
@@ -139,7 +137,7 @@ def main_command(account, password, host, post, database, update):
             fund_list = pd.read_sql('SELECT DISTINCT fund FROM fund_list WHERE type BETWEEN %d AND %d' % (
             type_list[i], type_list[i + 1] - 1), engine).sort_values(by='fund')
 
-        list_error = get_fund_data(fund_list, date_last, engine, name)
+        list_error = get_fund_data(fund_list, engine, name, update)
 
         print("\n%s_fund_data更新完成" % (names[i]))
         print("\n以下基金更新错误：" + str(list_error))
