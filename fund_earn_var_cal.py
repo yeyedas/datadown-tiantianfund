@@ -15,7 +15,7 @@ import tqdm
 import click
 
 def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine):
-    cal_day = [7, 30, 90, 180, 270, 365]
+    cal_day = [7, 30, 90, 180, 270, 366]
 
     for fund in tqdm.tqdm(fund_list.fund):
 
@@ -23,7 +23,7 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
                                 engine).sort_values(by='date')
         fund_data = fund_data.drop_duplicates()
         fund_data = fund_data[
-            fund_data.date >= (pd.to_datetime(date_end) - pd.Timedelta(days=365) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")]
+            fund_data.date >= (pd.to_datetime(date_end) - pd.Timedelta(days=366)).strftime("%Y-%m-%d")]
         date_list = fund_data.date
 
         date_list_full = pd.DataFrame()
@@ -46,10 +46,10 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
         positive_rate_df.loc[:, 'fund'] = fund_data.fund
         positive_rate_df.loc[:, 'positive'] = fund_data.growth>=0
         for day in cal_day:
-            days_grand_total = (fund_data.ACWorth - fund_data.ACWorth.shift(day-1)) / fund_data.ACWorth.shift(day-1)
+            days_grand_total = (fund_data.ACWorth - fund_data.ACWorth.shift(day)) / fund_data.ACWorth.shift(day)
             earn_df.loc[:, '%ddays_earn' % (day)] = days_grand_total
-            var_df.loc[:, '%ddays_var' % (day)] = fund_data.growth.rolling(day).var() * 100
-            positive_rate_df.loc[:, '%ddays_rate' % (day)] = positive_rate_df.loc[:, 'positive'].rolling(day).sum() / day
+            var_df.loc[:, '%ddays_var' % (day)] = fund_data.growth.rolling(day+1).var() * 100
+            positive_rate_df.loc[:, '%ddays_rate' % (day)] = positive_rate_df.loc[:, 'positive'].rolling(day+1).sum() / (day+1)
 
         earn_df.loc[:, 'second_increase'] = earn_df.loc[:, '90days_earn'].shift(90)
         earn_df.loc[:, 'third_increase'] = earn_df.loc[:, 'second_increase'].shift(90)
@@ -68,10 +68,10 @@ def cal_day_earn_and_var(fund_list, date_latest, date_end, name, update, engine)
         positive_rate_df = positive_rate_df[positive_rate_df.date > date_end]
 
         earn_df = earn_df[
-            ['fund', 'date', '7days_earn', '30days_earn', '90days_earn', '180days_earn', '270days_earn', '365days_earn',
+            ['fund', 'date', '7days_earn', '30days_earn', '90days_earn', '180days_earn', '270days_earn', '366days_earn',
              'second_increase', 'third_increase', 'fourth_increase']]
         var_df = var_df[
-            ['fund', 'date', '7days_var', '30days_var', '90days_var', '180days_var', '270days_var', '365days_var',
+            ['fund', 'date', '7days_var', '30days_var', '90days_var', '180days_var', '270days_var', '366days_var',
              'second_increase', 'third_increase', 'fourth_increase']]
         if earn_df.empty == False:
             if (update == False) & (fund == fund_list.loc[0].values):
